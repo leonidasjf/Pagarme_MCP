@@ -1,0 +1,167 @@
+name: pagarme_v5_agent
+version: 1.0.0
+description: >
+  Agente para interagir com a API Pagar.me v5, com suporte a pedidos, cobranças, clientes,
+  webhooks, split de pagamentos, assinaturas e antecipações. Usa autenticação básica com chave codificada em base64.
+  Documentação oficial: https://docs.pagar.me/reference
+
+auth:
+  type: basic
+  username: "{{PAGARME_SECRET_KEY_BASE64}}"
+  password: ""
+
+base_url: https://api.pagar.me/core/v5
+
+headers:
+  Content-Type: application/json
+  Authorization: Basic {{PAGARME_SECRET_KEY_BASE64}}
+
+variables:
+  PAGARME_SECRET_KEY_BASE64: "<nunca inclua sua chave real neste arquivo público>"
+
+endpoints:
+  - name: Criar Pedido
+    method: POST
+    path: /orders
+    description: Cria um novo pedido com itens e cobranças associadas
+    body:
+      customer_id: string
+      items: array
+      charges: array
+
+  - name: Obter Pedido
+    method: GET
+    path: /orders/{order_id}
+    description: Busca um pedido pelo ID
+
+  - name: Criar Cliente
+    method: POST
+    path: /customers
+    description: Cria um cliente novo
+    body:
+      name: string
+      email: string
+      type: individual|company
+      documents: array
+
+  - name: Criar Cobrança (Charge)
+    method: POST
+    path: /charges
+    description: Cria uma cobrança direta (sem pedido)
+    body:
+      customer_id: string
+      amount: integer
+      payment_method: credit_card|boleto|pix
+      payment_details: object
+
+  - name: Criar Cartão
+    method: POST
+    path: /cards
+    description: Armazena cartão tokenizado para uso posterior
+    body:
+      number: string
+      holder_name: string
+      exp_month: string
+      exp_year: string
+      cvv: string
+
+  - name: Criar Webhook
+    method: POST
+    path: /notifications
+    description: Registra uma URL para receber eventos (webhook)
+    body:
+      event: string
+      url: string
+
+  - name: Listar Webhooks
+    method: GET
+    path: /notifications
+    description: Lista todas URLs de webhook registradas
+
+  - name: Criar Plano de Assinatura
+    method: POST
+    path: /plans
+    description: Cria um plano para uso em assinaturas recorrentes
+    body:
+      name: string
+      billing_type: prepaid|postpaid
+      interval: day|week|month
+      interval_count: integer
+      items: array
+
+  - name: Criar Assinatura
+    method: POST
+    path: /subscriptions
+    description: Cria uma assinatura com base em um plano
+    body:
+      plan_id: string
+      customer_id: string
+      payment_method: credit_card|boleto|pix
+      card_id: string
+
+  - name: Criar Transferência
+    method: POST
+    path: /transfers
+    description: Transfere saldo entre recebedores
+    body:
+      amount: integer
+      recipient_id: string
+
+  - name: Simular Antecipação
+    method: GET
+    path: /recipients/{recipient_id}/anticipations/simulate
+    description: Simula valores de antecipação para recebedor
+    query:
+      amount: integer
+
+  - name: Confirmar Antecipação
+    method: POST
+    path: /recipients/{recipient_id}/anticipations
+    description: Confirma antecipação de recebíveis
+    body:
+      amount: integer
+      timeframe: start|end
+      payment_date: date
+
+  - name: Consultar Saldo do Recebedor
+    method: GET
+    path: /recipients/{recipient_id}/balance
+    description: Consulta o saldo disponível e a liberar
+
+  - name: Cancelar Cobrança
+    method: DELETE
+    path: /charges/{charge_id}
+    description: Cancela uma cobrança específica
+
+  - name: Estornar Pagamento
+    method: POST
+    path: /charges/{charge_id}/refunds
+    description: Realiza o estorno de uma cobrança paga
+    body:
+      amount: integer
+      split: array (opcional)
+
+examples:
+  - name: Criar pedido com cartão de crédito
+    request:
+      method: POST
+      path: /orders
+      body:
+        customer_id: "cus_xxx"
+        items:
+          - name: "Produto X"
+            quantity: 1
+            amount: 10000
+        charges:
+          - payment_method: credit_card
+            credit_card:
+              card_id: "card_xxx"
+
+  - name: Criar cobrança por PIX
+    request:
+      method: POST
+      path: /charges
+      body:
+        customer_id: "cus_xyz"
+        amount: 20000
+        payment_method: pix
